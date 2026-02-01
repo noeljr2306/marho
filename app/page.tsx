@@ -1,65 +1,85 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+
+export default function Page() {
+  const router = useRouter();
+  const [roomCode, setRoomCode] = useState("");
+  const [nickname, setNickname] = useState("");
+
+  const handleJoin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (roomCode && nickname) {
+      // In a real app, you'd validate and join via socket here
+      console.log("Joining room:", roomCode, "as", nickname);
+      router.push(`/lobby/${roomCode}?name=${nickname}`);
+    }
+  };
+
+  const handleHost = () => {
+    // Logic to create a room
+    const newRoomCode = Math.random()
+      .toString(36)
+      .substring(2, 8)
+      .toUpperCase();
+    console.log("Hosting room:", newRoomCode);
+    // Redirect host directly to the lobby with host flag
+    router.push(`/lobby/${newRoomCode}?host=true`);
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="min-h-screen bg-marho-bg flex flex-col items-center justify-center p-4 font-sans text-black">
+      <h1 className="text-6xl font-black mb-12 text-sky-500 drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] uppercase tracking-tighter">
+        Marho
+      </h1>
+
+      <div className="grid md:grid-cols-2 gap-8 w-full max-w-4xl">
+        <div className="bg-marho-yellow border-4 border-black shadow-brutal-lg p-8 flex flex-col items-center justify-center transform transition-transform hover:-translate-y-1 hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
+          <h2 className="text-3xl font-bold mb-6 uppercase">Host a Game</h2>
+          <p className="text-lg font-medium mb-8 text-center">
+            Create a room and challenge your friends!
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            onClick={handleHost}
+            className="w-full cursor-pointer bg-white border-4 border-black py-4 text-xl font-bold shadow-brutal hover:bg-gray-100 active:translate-y-1 active:shadow-none transition-all"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            Create Room
+          </button>
         </div>
-      </main>
+
+        <div className="bg-marho-green border-4 border-black shadow-brutal-lg p-8 flex flex-col items-center justify-center transform transition-transform hover:-translate-y-1 hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
+          <h2 className="text-3xl font-bold mb-6 uppercase">Join Game</h2>
+          <form onSubmit={handleJoin} className="w-full space-y-4">
+            <div>
+              <input
+                type="text"
+                placeholder="ROOM CODE"
+                value={roomCode}
+                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                maxLength={6}
+                className="w-full p-4 border-4 border-black text-xl font-bold placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-marho-pink shadow-brutal"
+              />
+            </div>
+            <div>
+              <input
+                type="text"
+                placeholder="NICKNAME"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                maxLength={12}
+                className="w-full p-4 border-4 border-black text-xl font-bold placeholder-gray-500 focus:outline-none focus:ring-4 focus:ring-marho-pink shadow-brutal"
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full cursor-pointer bg-marho-pink text-black border-4 border-black py-4 text-xl font-bold shadow-brutal hover:brightness-110 active:translate-y-1 active:shadow-none transition-all"
+            >
+              Enter Lobby
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }
