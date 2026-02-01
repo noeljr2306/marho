@@ -6,16 +6,18 @@ import https from "https";
 
 const server = createServer();
 const io = new Server(server, {
-  cors: { origin: true },
+  cors: {
+    origin:
+      process.env.NODE_ENV === "production"
+        ? process.env.CLIENT_URL
+        : "http://localhost:3000",
+    methods: ["GET", "POST"],
+  },
 });
-
-/* -------------------- STATE -------------------- */
 
 const rooms = {};
 const activeGames = {};
 const sessionsFile = path.join(process.cwd(), "sessions.json");
-
-/* -------------------- CATEGORIES -------------------- */
 
 const categories = {
   "General Knowledge": 9,
@@ -25,8 +27,6 @@ const categories = {
   History: 23,
   Celebrities: 20,
 };
-
-/* -------------------- HELPERS -------------------- */
 
 function saveSession(session) {
   try {
@@ -54,9 +54,8 @@ function fetchQuestions(amount, categoryId) {
         res.on("end", () => {
           try {
             const parsed = JSON.parse(data);
-            parsed.response_code === 0
-              ? resolve(parsed.results)
-              : reject(new Error("Trivia API error"));
+            if (parsed.response_code === 0) resolve(parsed.results);
+            else reject(new Error("Trivia API error"));
           } catch (e) {
             reject(e);
           }
@@ -66,45 +65,33 @@ function fetchQuestions(amount, categoryId) {
   });
 }
 
-/* -------------------- SOCKET LOGIC -------------------- */
-
 io.on("connection", (socket) => {
   console.log("Connected:", socket.id);
 
-  // 1. HOST CREATES ROOM
   socket.on("create_room", ({ room, settings }) => {
     rooms[room] = {
       players: [],
-      readyStates: {}, // Kept for compatibility, but not required to start
+      readyStates: {},
       settings: settings || { numQuestions: 10, category: "General Knowledge" },
       locked: false,
     };
-    console.log(`Room Created: ${room}`);
     socket.emit("room_created", room);
   });
 
-  // 2. PLAYER JOINS ROOM
   socket.on("join_room", ({ room, player }) => {
-    // Check if room exists in the 'rooms' object
     if (!rooms[room]) {
-      console.log(`Join Failed: Room ${room} does not exist.`);
       socket.emit("room_not_found", { message: "Invalid Room Code" });
       return;
     }
-
     const roomState = rooms[room];
     if (roomState.locked) {
       socket.emit("room_locked");
       return;
     }
-
-    // Prevent duplicate joins
     if (!roomState.players.find((p) => p.id === socket.id)) {
       roomState.players.push({ id: socket.id, name: player.name });
     }
-
     socket.join(room);
-    // Success: Tell the player they are in and update everyone's list
     socket.emit("join_success", { settings: roomState.settings });
     io.to(room).emit("player_joined", roomState.players);
   });
@@ -115,12 +102,11 @@ io.on("connection", (socket) => {
     io.to(room).emit("settings_updated", settings);
   });
 
-  // 3. START GAME (Ready check removed)
   socket.on("start_game", async ({ room }) => {
     const roomState = rooms[room];
     if (!roomState || roomState.players.length === 0) return;
 
-    roomState.locked = true; // Prevent new joins once game starts
+    roomState.locked = true;
 
     try {
       const questions = await fetchQuestions(
@@ -152,7 +138,6 @@ io.on("connection", (socket) => {
         questions: transformed.map(({ correct, ...q }) => q),
       });
     } catch (err) {
-      console.error("Game Start Error:", err);
       socket.emit("game_error", { message: "Failed to fetch questions" });
     }
   });
@@ -201,23 +186,9 @@ io.on("connection", (socket) => {
       }
     }
   });
-  socket.on("game_ended", ({ scores: finalScores, answers: allAnswers }) => {
-    try {
-      // 1. Persist the final data so the Results page can grab it
-      localStorage.setItem(`scores:${roomCode}`, JSON.stringify(finalScores));
-      localStorage.setItem(`answers:${roomCode}`, JSON.stringify(allAnswers));
-
-      // 2. Small delay for dramatic effect/processing before navigating
-      setTimeout(() => {
-        router.push(`/game/${roomCode}/results`);
-      }, 1500);
-    } catch (err) {
-      console.error("Error saving final results:", err);
-    }
-  });
 });
 
-const PORT = process.env.SOCKET_PORT || 4000;
+const PORT = process.env.PORT || process.env.SOCKET_PORT || 4000;
 server.listen(PORT, () => {
   console.log(`Marho Socket Server running on port ${PORT}`);
 });
