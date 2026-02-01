@@ -23,7 +23,7 @@ const categories = {
   Art: 25,
   Geography: 22,
   History: 23,
-  Mythology: 20, // FIXED: correct label
+  Celebrities: 20, // FIXED: correct label
 };
 
 /* -------------------- HELPERS -------------------- */
