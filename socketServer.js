@@ -47,16 +47,18 @@ function shuffle(arr) {
 function fetchQuestions(amount, categoryId) {
   return new Promise((resolve, reject) => {
     const url = `https://opentdb.com/api.php?amount=${amount}&category=${categoryId}&type=multiple`;
-    https.get(url, (res) => {
-      let data = "";
-      res.on("data", (c) => (data += c));
-      res.on("end", () => {
-        const parsed = JSON.parse(data);
-        parsed.response_code === 0
-          ? resolve(parsed.results)
-          : reject(new Error("Trivia API error"));
-      });
-    }).on("error", reject);
+    https
+      .get(url, (res) => {
+        let data = "";
+        res.on("data", (c) => (data += c));
+        res.on("end", () => {
+          const parsed = JSON.parse(data);
+          parsed.response_code === 0
+            ? resolve(parsed.results)
+            : reject(new Error("Trivia API error"));
+        });
+      })
+      .on("error", reject);
   });
 }
 
@@ -66,16 +68,11 @@ io.on("connection", (socket) => {
   console.log("Connected:", socket.id);
 
   socket.on("join_room", ({ room, player }) => {
-    rooms[room] ??= {
-      players: [],
-      locked: false,
-      settings: {
-        category: "General Knowledge",
-        numQuestions: 10,
-        timeLimit: 30,
-      },
-      readyStates: {},
-    };
+    // ✅ Check if room exists
+    if (!rooms[room]) {
+      socket.emit("room_not_found");
+      return;
+    }
 
     const roomState = rooms[room];
     if (roomState.locked) {

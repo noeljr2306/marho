@@ -39,8 +39,12 @@ export default function LobbyPage({
     numQuestions: 10,
     timeLimit: 30,
   });
-  const [readyStates, setReadyStates] = useState<{ [key: string]: boolean }>({});
+  const [readyStates, setReadyStates] = useState<{ [key: string]: boolean }>(
+    {},
+  );
   const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
+  const [roomValid, setRoomValid] = useState<boolean | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
   useEffect(() => {
     if (!socketRef.current) {
@@ -58,6 +62,15 @@ export default function LobbyPage({
       if (hostFlag) {
         socket.emit("subscribe_room", { room: roomCode });
       }
+    });
+
+    socket.on("room_not_found", () => {
+      setRoomValid(false);
+      setErrorMessage("Room not found! Please check the code and try again.");
+    });
+
+    socket.on("game_error", ({ message }) => {
+      setErrorMessage(message);
     });
 
     socket.on("player_joined", (playersList) => setPlayers(playersList));
@@ -84,13 +97,19 @@ export default function LobbyPage({
   const updateSettings = (newSettings: typeof settings) => {
     if (!socketRef.current || !hostFlag) return;
     setSettings(newSettings);
-    socketRef.current.emit("update_settings", { room: roomCode, settings: newSettings });
+    socketRef.current.emit("update_settings", {
+      room: roomCode,
+      settings: newSettings,
+    });
   };
 
   const toggleReady = () => {
     if (!socketRef.current?.id) return;
     const currentReady = readyStates[socketRef.current.id] || false;
-    socketRef.current.emit("player_ready", { room: roomCode, ready: !currentReady });
+    socketRef.current.emit("player_ready", {
+      room: roomCode,
+      ready: !currentReady,
+    });
   };
 
   const startGame = () => {
@@ -98,7 +117,8 @@ export default function LobbyPage({
   };
 
   const isReady = socketId ? readyStates[socketId] : false;
-  const allReady = players.length > 0 && players.every((p) => readyStates[p.id]);
+  const allReady =
+    players.length > 0 && players.every((p) => readyStates[p.id]);
 
   return (
     <div className="min-h-screen p-6 flex flex-col items-center bg-[#F4F2ED] text-black font-sans">
@@ -116,13 +136,20 @@ export default function LobbyPage({
           <>
             {/* Category Carousel */}
             <div className="mb-8">
-              <h3 className="text-2xl font-[900] mb-4 uppercase italic">1. Select Theme</h3>
+              <h3 className="text-2xl font-[900] mb-4 uppercase italic">
+                1. Select Theme
+              </h3>
               <div className="flex items-center justify-between gap-4">
                 <button
                   onClick={() => {
-                    const newIndex = (currentCategoryIndex - 1 + categories.length) % categories.length;
+                    const newIndex =
+                      (currentCategoryIndex - 1 + categories.length) %
+                      categories.length;
                     setCurrentCategoryIndex(newIndex);
-                    updateSettings({ ...settings, category: categories[newIndex] });
+                    updateSettings({
+                      ...settings,
+                      category: categories[newIndex],
+                    });
                   }}
                   className="w-12 h-12 border-4 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center text-2xl font-black"
                 >
@@ -133,9 +160,13 @@ export default function LobbyPage({
                 </div>
                 <button
                   onClick={() => {
-                    const newIndex = (currentCategoryIndex + 1) % categories.length;
+                    const newIndex =
+                      (currentCategoryIndex + 1) % categories.length;
                     setCurrentCategoryIndex(newIndex);
-                    updateSettings({ ...settings, category: categories[newIndex] });
+                    updateSettings({
+                      ...settings,
+                      category: categories[newIndex],
+                    });
                   }}
                   className="w-12 h-12 border-4 border-black bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all flex items-center justify-center text-2xl font-black"
                 >
@@ -146,15 +177,25 @@ export default function LobbyPage({
 
             {/* Brutalist Sliders */}
             <div className="mb-8 space-y-6">
-              <h3 className="text-2xl font-[900] mb-4 uppercase italic">2. Set Rules</h3>
+              <h3 className="text-2xl font-[900] mb-4 uppercase italic">
+                2. Set Rules
+              </h3>
               <div className="space-y-4">
                 <div className="p-4 border-2 border-black bg-[#f0f0f0]">
                   <label className="block text-lg font-black mb-2 uppercase">
                     Questions: {settings.numQuestions}
                   </label>
                   <input
-                    type="range" min="5" max="20" value={settings.numQuestions}
-                    onChange={(e) => updateSettings({ ...settings, numQuestions: parseInt(e.target.value) })}
+                    type="range"
+                    min="5"
+                    max="20"
+                    value={settings.numQuestions}
+                    onChange={(e) =>
+                      updateSettings({
+                        ...settings,
+                        numQuestions: parseInt(e.target.value),
+                      })
+                    }
                     className="w-full h-4 bg-black appearance-none cursor-pointer accent-[#FFD700]"
                   />
                 </div>
@@ -163,18 +204,31 @@ export default function LobbyPage({
                     Time Limit: {settings.timeLimit}s
                   </label>
                   <input
-                    type="range" min="10" max="60" value={settings.timeLimit}
-                    onChange={(e) => updateSettings({ ...settings, timeLimit: parseInt(e.target.value) })}
+                    type="range"
+                    min="10"
+                    max="60"
+                    value={settings.timeLimit}
+                    onChange={(e) =>
+                      updateSettings({
+                        ...settings,
+                        timeLimit: parseInt(e.target.value),
+                      })
+                    }
                     className="w-full h-4 bg-black appearance-none cursor-pointer accent-[#FF0055]"
                   />
                 </div>
               </div>
             </div>
 
-            <h2 className="text-2xl font-[900] mb-4 uppercase italic">3. Squad ({players.length})</h2>
+            <h2 className="text-2xl font-[900] mb-4 uppercase italic">
+              3. Squad ({players.length})
+            </h2>
             <div className="grid grid-cols-2 gap-4 mb-6">
               {players.map((p) => (
-                <div key={p.id} className={`p-3 border-4 border-black font-black text-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${readyStates[p.id] ? "bg-[#00FF99]" : "bg-[#FF0055] text-white"}`}>
+                <div
+                  key={p.id}
+                  className={`p-3 border-4 border-black font-black text-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${readyStates[p.id] ? "bg-[#00FF99]" : "bg-[#FF0055] text-white"}`}
+                >
                   {p.name} {readyStates[p.id] ? "✓" : "..."}
                 </div>
               ))}
@@ -184,7 +238,8 @@ export default function LobbyPage({
               onClick={startGame}
               disabled={players.length === 0 || !allReady || locked}
               className={`w-full py-5 text-2xl font-[900] border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-[#00FF99] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all ${
-                (players.length === 0 || !allReady || locked) && "grayscale opacity-50 cursor-not-allowed"
+                (players.length === 0 || !allReady || locked) &&
+                "grayscale opacity-50 cursor-not-allowed"
               }`}
             >
               IGNITE QUIZ
@@ -192,14 +247,16 @@ export default function LobbyPage({
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <h2 className="text-4xl font-[900] mb-4 uppercase">READY UP, {name}!</h2>
+            <h2 className="text-4xl font-[900] mb-4 uppercase">
+              READY UP, {name}!
+            </h2>
             <p className="text-xl font-bold mb-8 bg-[#FFD700] p-2 border-2 border-black shadow-[4px_4px_0px_0px_black]">
               Category: {settings.category}
             </p>
-            
-            <button 
+
+            <button
               onClick={toggleReady}
-              className={`w-full py-8 text-3xl font-[900] border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mb-8 transition-all active:shadow-none ${isReady ? 'bg-[#00FF99] translate-x-1 translate-y-1 shadow-none' : 'bg-[#FF0055] text-white'}`}
+              className={`w-full py-8 text-3xl font-[900] border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mb-8 transition-all active:shadow-none ${isReady ? "bg-[#00FF99] translate-x-1 translate-y-1 shadow-none" : "bg-[#FF0055] text-white"}`}
             >
               {isReady ? "READY TO GO!" : "CLICK TO READY"}
             </button>
