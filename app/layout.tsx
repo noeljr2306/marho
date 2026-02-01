@@ -4,6 +4,13 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Marho",
   description: "A Fun Quiz Game",
+  manifest: "/manifest.json",
+  themeColor: "#FFD700",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Marho",
+  },
 };
 
 export default function RootLayout({
