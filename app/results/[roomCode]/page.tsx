@@ -3,10 +3,7 @@
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 
-type Player = {
-  id: string;
-  name: string;
-};
+type Player = { id: string; name: string };
 
 type Question = {
   id: number;
@@ -41,23 +38,21 @@ export default function ResultsPage() {
   const [currentUserId, setCurrentUserId] = useState<string>("");
 
   useEffect(() => {
-    // Get results from sessionStorage or localStorage
     const loadResults = () => {
       try {
-        const sessionData = sessionStorage.getItem(`session:${roomCode}`);
-        const scoresData = localStorage.getItem(`scores:${roomCode}`);
-        const answersData = localStorage.getItem(`answers:${roomCode}`);
+        // Updated keys to match our GamePage/Lobby logic
+        const sessionData = sessionStorage.getItem(`game_${roomCode}`);
+        const scoresData = localStorage.getItem(`scores_${roomCode}`);
+        const answersData = localStorage.getItem(`answers_${roomCode}`);
+        const userId = localStorage.getItem(`userId_${roomCode}`);
 
-        if (sessionData && scoresData && answersData) {
-          const session = JSON.parse(sessionData);
-          const finalScores = JSON.parse(scoresData);
-          const answers = JSON.parse(answersData);
-
-          setResults({ session, finalScores, answers });
+        if (sessionData && scoresData) {
+          setResults({
+            session: JSON.parse(sessionData),
+            finalScores: JSON.parse(scoresData),
+            answers: answersData ? JSON.parse(answersData) : {},
+          });
         }
-
-        // Get current user ID (assuming it's stored somewhere)
-        const userId = localStorage.getItem(`userId:${roomCode}`);
         if (userId) setCurrentUserId(userId);
       } catch (error) {
         console.error("Failed to load results:", error);
@@ -69,18 +64,17 @@ export default function ResultsPage() {
 
   if (!results) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-marho-bg">
-        <div className="bg-white border-4 border-black shadow-brutal p-8 text-center">
-          <h2 className="text-3xl font-extrabold mb-4">Loading Results...</h2>
-          <p className="text-gray-700">
-            Please wait while we gather the results.
-          </p>
+      <div className="min-h-screen flex items-center justify-center p-6 bg-[#F4F2ED]">
+        <div className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_black] p-8 text-center">
+          <h2 className="text-3xl font-black uppercase mb-4">
+            Finalizing Scores...
+          </h2>
+          <div className="w-12 h-12 border-4 border-black border-t-[#00FF99] rounded-full animate-spin mx-auto" />
         </div>
       </div>
     );
   }
 
-  // Sort players by score
   const sortedPlayers = results.session.players
     .map((player) => ({
       ...player,
@@ -91,132 +85,155 @@ export default function ResultsPage() {
   const topThree = sortedPlayers.slice(0, 3);
   const restOfPlayers = sortedPlayers.slice(3);
 
-  // Get current user's answers for personal review
-  const userAnswers = currentUserId ? results.answers : {};
-
   return (
-    <div className="min-h-screen p-6 bg-marho-bg">
-      <div className="max-w-4xl mx-auto space-y-8">
+    <div className="min-h-screen p-6 bg-[#F4F2ED] font-sans">
+      <div className="max-w-4xl mx-auto space-y-12">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-5xl font-extrabold mb-4">Winner&apos;s Circle</h1>
-          <p className="text-xl text-gray-700">Room Code: {roomCode}</p>
+        <div className="text-center">
+          <h1 className="text-6xl md:text-8xl font-black mb-2 uppercase italic tracking-tighter">
+            Podium
+          </h1>
+          <p className="text-xl font-bold bg-black text-white inline-block px-4 py-1 uppercase">
+            Room: {roomCode}
+          </p>
         </div>
 
-        {/* Top 3 Podium */}
-        <div className="bg-white border-4 border-black shadow-brutal p-8">
-          <h2 className="text-3xl font-extrabold mb-6 text-center">Podium</h2>
-          <div className="flex justify-center items-end space-x-4 mb-8">
+        {/* Podium Section */}
+        <div className="bg-white border-4 border-black shadow-[12px_12px_0px_0px_black] p-8 md:p-12">
+          <div className="flex flex-col md:flex-row justify-center items-center md:items-end gap-4 md:gap-0">
             {/* 2nd Place */}
             {topThree[1] && (
-              <div className="text-center">
-                <div className="w-20 h-16 bg-gray-300 border-4 border-black flex items-center justify-center font-bold text-xl mb-2">
-                  2
+              <div className="flex flex-col items-center w-full md:w-1/3">
+                <div className="bg-[#FF0055] text-white p-4 border-4 border-black w-full text-center shadow-[4px_4px_0px_0px_black] mb-2">
+                  <p className="font-black text-lg truncate">
+                    {topThree[1].name}
+                  </p>
+                  <p className="text-3xl font-black">{topThree[1].score}</p>
                 </div>
-                <div className="bg-marho-pink border-4 border-black p-4 shadow-brutal">
-                  <div className="font-bold text-lg">{topThree[1].name}</div>
-                  <div className="text-2xl font-extrabold">
-                    {topThree[1].score}
-                  </div>
+                <div className="w-full h-24 bg-gray-200 border-x-4 border-t-4 border-black flex items-center justify-center text-4xl font-black">
+                  2
                 </div>
               </div>
             )}
 
             {/* 1st Place */}
             {topThree[0] && (
-              <div className="text-center">
-                <div className="w-24 h-20 bg-yellow-400 border-4 border-black flex items-center justify-center font-bold text-2xl mb-2">
-                  1
+              <div className="flex flex-col items-center w-full md:w-1/3 z-10">
+                <div className="bg-[#FFD700] p-6 border-4 border-black w-full text-center shadow-[8px_8px_0px_0px_black] mb-2 scale-110">
+                  <p className="font-black text-xl truncate">
+                    {topThree[0].name}
+                  </p>
+                  <p className="text-5xl font-black">{topThree[0].score}</p>
                 </div>
-                <div className="bg-marho-yellow border-4 border-black p-6 shadow-brutal">
-                  <div className="font-bold text-xl">{topThree[0].name}</div>
-                  <div className="text-3xl font-extrabold">
-                    {topThree[0].score}
-                  </div>
+                <div className="w-full h-40 bg-white border-x-4 border-t-4 border-black flex items-center justify-center text-6xl font-black">
+                  1
                 </div>
               </div>
             )}
 
             {/* 3rd Place */}
             {topThree[2] && (
-              <div className="text-center">
-                <div className="w-20 h-12 bg-orange-400 border-4 border-black flex items-center justify-center font-bold text-lg mb-2">
-                  3
+              <div className="flex flex-col items-center w-full md:w-1/3">
+                <div className="bg-[#00FF99] p-4 border-4 border-black w-full text-center shadow-[4px_4px_0px_0px_black] mb-2">
+                  <p className="font-black text-lg truncate">
+                    {topThree[2].name}
+                  </p>
+                  <p className="text-3xl font-black">{topThree[2].score}</p>
                 </div>
-                <div className="bg-marho-green border-4 border-black p-4 shadow-brutal">
-                  <div className="font-bold text-lg">{topThree[2].name}</div>
-                  <div className="text-2xl font-extrabold">
-                    {topThree[2].score}
-                  </div>
+                <div className="w-full h-16 bg-gray-300 border-x-4 border-t-4 border-black flex items-center justify-center text-2xl font-black">
+                  3
                 </div>
               </div>
             )}
           </div>
+          <div className="h-4 bg-black w-full hidden md:block" />
         </div>
 
-        {/* Full Standings */}
-        <div className="bg-white border-4 border-black shadow-brutal p-8">
-          <h2 className="text-3xl font-extrabold mb-6">Full Standings</h2>
-          <div className="space-y-2">
-            {restOfPlayers.map((player, index) => (
-              <div
-                key={player.id}
-                className="flex justify-between items-center p-4 border-2 border-black bg-marho-pink"
-              >
-                <div className="flex items-center space-x-4">
-                  <span className="font-bold text-xl">#{index + 4}</span>
-                  <span className="font-bold text-lg">{player.name}</span>
+        {/* Full Leaderboard */}
+        {restOfPlayers.length > 0 && (
+          <div className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_black] p-6">
+            <h2 className="text-2xl font-black uppercase mb-4 italic">
+              The Rest of the Pack
+            </h2>
+            <div className="divide-y-4 divide-black border-t-4 border-black">
+              {restOfPlayers.map((player, index) => (
+                <div
+                  key={player.id}
+                  className="flex justify-between items-center py-4 px-2 hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="font-black text-xl w-8">#{index + 4}</span>
+                    <span className="font-bold text-lg">{player.name}</span>
+                  </div>
+                  <span className="font-black text-2xl">{player.score}</span>
                 </div>
-                <span className="font-extrabold text-2xl">{player.score}</span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Personal Review */}
         {currentUserId && (
-          <div className="bg-white border-4 border-black shadow-brutal p-8">
-            <h2 className="text-3xl font-extrabold mb-6">Your Performance</h2>
-            <div className="space-y-4">
+          <div className="space-y-6">
+            <h2 className="text-3xl font-black uppercase italic">
+              Match History
+            </h2>
+            <div className="grid gap-4">
               {results.session.questions.map((question, index) => {
-                const userAnswer = userAnswers[question.id]?.[currentUserId];
-                const isCorrect = userAnswer === question.correct_answer;
+                const uAnswer = results.answers[question.id]?.[currentUserId];
+                const isCorrect = uAnswer === question.correct_answer;
 
                 return (
-                  <div key={question.id} className="border-2 border-black p-4">
-                    <div className="mb-2">
-                      <span className="font-bold">Question {index + 1}:</span>
-                      <span
-                        className="ml-2"
-                        dangerouslySetInnerHTML={{ __html: question.question }}
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+                  <div
+                    key={question.id}
+                    className={`p-6 border-4 border-black shadow-[6px_6px_0px_0px_black] bg-white`}
+                  >
+                    <div className="flex items-start justify-between gap-4 mb-4">
+                      <div>
+                        <p className="text-xs font-black uppercase opacity-50">
+                          Question {index + 1}
+                        </p>
+                        <h3
+                          className="text-xl font-bold"
+                          dangerouslySetInnerHTML={{
+                            __html: question.question,
+                          }}
+                        />
+                      </div>
                       <div
-                        className={`p-2 border-2 ${userAnswer === question.correct_answer ? "bg-green-200 border-green-500" : "bg-red-200 border-red-500"}`}
+                        className={`text-3xl ${isCorrect ? "text-[#00FF99]" : "text-[#FF0055]"}`}
                       >
-                        <span className="font-bold">Your Answer:</span>
-                        <span
-                          className="ml-2"
-                          dangerouslySetInnerHTML={{
-                            __html: userAnswer || "No answer",
-                          }}
-                        />
-                      </div>
-                      <div className="p-2 border-2 bg-green-200 border-green-500">
-                        <span className="font-bold">Correct Answer:</span>
-                        <span
-                          className="ml-2"
-                          dangerouslySetInnerHTML={{
-                            __html: question.correct_answer,
-                          }}
-                        />
+                        {isCorrect ? "✓" : "✕"}
                       </div>
                     </div>
-                    <div
-                      className={`text-center font-bold text-lg ${isCorrect ? "text-green-600" : "text-red-600"}`}
-                    >
-                      {isCorrect ? "✓ Correct" : "✗ Incorrect"}
+
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div
+                        className={`p-3 border-2 border-black ${isCorrect ? "bg-[#00FF99]/20" : "bg-[#FF0055]/20"}`}
+                      >
+                        <p className="text-[10px] font-black uppercase">
+                          Your Pick
+                        </p>
+                        <p
+                          className="font-bold"
+                          dangerouslySetInnerHTML={{
+                            __html: uAnswer || "Timed Out",
+                          }}
+                        />
+                      </div>
+                      {!isCorrect && (
+                        <div className="p-3 border-2 border-black bg-[#00FF99]/20">
+                          <p className="text-[10px] font-black uppercase text-[#008855]">
+                            Correct Answer
+                          </p>
+                          <p
+                            className="font-bold"
+                            dangerouslySetInnerHTML={{
+                              __html: question.correct_answer,
+                            }}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -225,13 +242,13 @@ export default function ResultsPage() {
           </div>
         )}
 
-        {/* Actions */}
-        <div className="text-center">
+        {/* Footer Actions */}
+        <div className="flex flex-col md:flex-row gap-4 pt-8">
           <button
             onClick={() => router.push("/")}
-            className="bg-marho-green border-4 border-black shadow-brutal py-4 px-8 font-bold text-xl hover:brightness-110"
+            className="flex-1 py-6 bg-[#00FF99] border-4 border-black shadow-[8px_8px_0px_0px_black] font-black text-2xl uppercase hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all"
           >
-            Play Again
+            New Game
           </button>
         </div>
       </div>

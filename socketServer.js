@@ -23,7 +23,7 @@ const categories = {
   Art: 25,
   Geography: 22,
   History: 23,
-  Celebrities: 20, // FIXED: correct label
+  Celebrities: 20,
 };
 
 /* -------------------- HELPERS -------------------- */
@@ -52,10 +52,14 @@ function fetchQuestions(amount, categoryId) {
         let data = "";
         res.on("data", (c) => (data += c));
         res.on("end", () => {
-          const parsed = JSON.parse(data);
-          parsed.response_code === 0
-            ? resolve(parsed.results)
-            : reject(new Error("Trivia API error"));
+          try {
+            const parsed = JSON.parse(data);
+            parsed.response_code === 0
+              ? resolve(parsed.results)
+              : reject(new Error("Trivia API error"));
+          } catch (e) {
+            reject(e);
+          }
         });
       })
       .on("error", reject);
@@ -67,10 +71,24 @@ function fetchQuestions(amount, categoryId) {
 io.on("connection", (socket) => {
   console.log("Connected:", socket.id);
 
+  // 1. HOST CREATES ROOM
+  socket.on("create_room", ({ room, settings }) => {
+    rooms[room] = {
+      players: [],
+      readyStates: {}, // Kept for compatibility, but not required to start
+      settings: settings || { numQuestions: 10, category: "General Knowledge" },
+      locked: false,
+    };
+    console.log(`Room Created: ${room}`);
+    socket.emit("room_created", room);
+  });
+
+  // 2. PLAYER JOINS ROOM
   socket.on("join_room", ({ room, player }) => {
-    // ✅ Check if room exists
+    // Check if room exists in the 'rooms' object
     if (!rooms[room]) {
-      socket.emit("room_not_found");
+      console.log(`Join Failed: Room ${room} does not exist.`);
+      socket.emit("room_not_found", { message: "Invalid Room Code" });
       return;
     }
 
@@ -80,15 +98,15 @@ io.on("connection", (socket) => {
       return;
     }
 
-    // ✅ Prevent duplicate joins
+    // Prevent duplicate joins
     if (!roomState.players.find((p) => p.id === socket.id)) {
       roomState.players.push({ id: socket.id, name: player.name });
     }
 
     socket.join(room);
+    // Success: Tell the player they are in and update everyone's list
+    socket.emit("join_success", { settings: roomState.settings });
     io.to(room).emit("player_joined", roomState.players);
-    socket.emit("settings_updated", roomState.settings);
-    socket.emit("ready_states_updated", roomState.readyStates);
   });
 
   socket.on("update_settings", ({ room, settings }) => {
@@ -97,26 +115,12 @@ io.on("connection", (socket) => {
     io.to(room).emit("settings_updated", settings);
   });
 
-  socket.on("player_ready", ({ room, ready }) => {
-    if (!rooms[room]) return;
-    rooms[room].readyStates[socket.id] = ready;
-    io.to(room).emit("ready_states_updated", rooms[room].readyStates);
-  });
-
+  // 3. START GAME (Ready check removed)
   socket.on("start_game", async ({ room }) => {
     const roomState = rooms[room];
-    if (!roomState) return;
+    if (!roomState || roomState.players.length === 0) return;
 
-    const allReady = roomState.players.every(
-      (p) => roomState.readyStates[p.id],
-    );
-
-    if (!allReady) {
-      socket.emit("game_error", { message: "Players not ready" });
-      return;
-    }
-
-    roomState.locked = true;
+    roomState.locked = true; // Prevent new joins once game starts
 
     try {
       const questions = await fetchQuestions(
@@ -145,10 +149,11 @@ io.on("connection", (socket) => {
       });
 
       io.to(room).emit("start_game", {
-        questions: transformed.map(({ correct, ...q }) => q), // hide answers
+        questions: transformed.map(({ correct, ...q }) => q),
       });
-    } catch {
-      socket.emit("game_error", { message: "Failed to start game" });
+    } catch (err) {
+      console.error("Game Start Error:", err);
+      socket.emit("game_error", { message: "Failed to fetch questions" });
     }
   });
 
@@ -160,7 +165,7 @@ io.on("connection", (socket) => {
     if (!question) return;
 
     game.answers[questionId] ??= {};
-    if (game.answers[questionId][socket.id]) return; // already answered
+    if (game.answers[questionId][socket.id]) return;
 
     game.answers[questionId][socket.id] = answer;
 
@@ -190,18 +195,29 @@ io.on("connection", (socket) => {
 
       if (r.players.length === 0) {
         delete rooms[room];
-        delete activeGames[room]; // ✅ cleanup
+        delete activeGames[room];
       } else {
         io.to(room).emit("player_joined", r.players);
-        io.to(room).emit("ready_states_updated", r.readyStates);
       }
+    }
+  });
+  socket.on("game_ended", ({ scores: finalScores, answers: allAnswers }) => {
+    try {
+      // 1. Persist the final data so the Results page can grab it
+      localStorage.setItem(`scores:${roomCode}`, JSON.stringify(finalScores));
+      localStorage.setItem(`answers:${roomCode}`, JSON.stringify(allAnswers));
+
+      // 2. Small delay for dramatic effect/processing before navigating
+      setTimeout(() => {
+        router.push(`/game/${roomCode}/results`);
+      }, 1500);
+    } catch (err) {
+      console.error("Error saving final results:", err);
     }
   });
 });
 
-/* -------------------- START SERVER -------------------- */
-
 const PORT = process.env.SOCKET_PORT || 4000;
 server.listen(PORT, () => {
-  console.log(`Socket server running on port ${PORT}`);
+  console.log(`Marho Socket Server running on port ${PORT}`);
 });

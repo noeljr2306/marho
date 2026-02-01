@@ -1,31 +1,62 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { io } from "socket.io-client";
+
+// Ensure this matches your server port
+const socket = io("http://localhost:4000");
 
 export default function Page() {
   const router = useRouter();
   const [roomCode, setRoomCode] = useState("");
   const [nickname, setNickname] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    // Listen for server validation errors
+    socket.on("room_not_found", (data) => {
+      setError(data.message || "Room not found!");
+    });
+
+    // Listen for successful join to navigate
+    socket.on("join_success", () => {
+      router.push(`/lobby/${roomCode}?name=${nickname}`);
+    });
+
+    return () => {
+      socket.off("room_not_found");
+      socket.off("join_success");
+    };
+  }, [roomCode, nickname, router]);
 
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
+    setError(""); // Reset error state
+
     if (roomCode && nickname) {
-      // In a real app, you'd validate and join via socket here
-      console.log("Joining room:", roomCode, "as", nickname);
-      router.push(`/lobby/${roomCode}?name=${nickname}`);
+      // 1. Emit join event to server for validation
+      socket.emit("join_room", {
+        room: roomCode,
+        player: { name: nickname },
+      });
     }
   };
 
   const handleHost = () => {
-    // Logic to create a room
     const newRoomCode = Math.random()
       .toString(36)
       .substring(2, 8)
       .toUpperCase();
+
+    // 2. Tell the server to initialize this room
+    socket.emit("create_room", {
+      room: newRoomCode,
+      settings: { category: "General Knowledge", numQuestions: 10 },
+    });
+
     console.log("Hosting room:", newRoomCode);
-    // Redirect host directly to the lobby with host flag
-    router.push(`/lobby/${newRoomCode}?host=true`);
+    router.push(`/lobby/${newRoomCode}?host=true&name=Host`);
   };
 
   return (
@@ -34,8 +65,8 @@ export default function Page() {
         Marho
       </h1>
 
-
       <div className="grid md:grid-cols-2 gap-8 w-full max-w-4xl">
+        {/* HOST BOX */}
         <div className="bg-marho-yellow border-4 border-black shadow-brutal-lg p-8 flex flex-col items-center justify-center transform transition-transform hover:-translate-y-1 hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
           <h2 className="text-3xl font-bold mb-6 uppercase">Host a Game</h2>
           <p className="text-lg font-medium mb-8 text-center">
@@ -47,12 +78,17 @@ export default function Page() {
           >
             Create Room
           </button>
-          
         </div>
 
+        {/* JOIN BOX */}
         <div className="bg-marho-green border-4 border-black shadow-brutal-lg p-8 flex flex-col items-center justify-center transform transition-transform hover:-translate-y-1 hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
           <h2 className="text-3xl font-bold mb-6 uppercase">Join Game</h2>
           <form onSubmit={handleJoin} className="w-full space-y-4">
+            {error && (
+              <div className="bg-red-500 text-white border-2 border-black p-2 font-bold text-center animate-pulse">
+                {error}
+              </div>
+            )}
             <div>
               <input
                 type="text"
