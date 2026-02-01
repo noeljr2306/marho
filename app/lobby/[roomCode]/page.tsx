@@ -4,6 +4,15 @@ import React, { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 
+const categories = [
+  "General Knowledge",
+  "Science & Nature",
+  "Art",
+  "Geography",
+  "History",
+  "Agriculture",
+];
+
 let socket: Socket | null = null;
 const SOCKET_URL =
   typeof window !== "undefined"
@@ -24,6 +33,15 @@ export default function LobbyPage({
   const [players, setPlayers] = useState<{ id: string; name: string }[]>([]);
   const [locked, setLocked] = useState(false);
   const [joined, setJoined] = useState(false);
+  const [settings, setSettings] = useState({
+    category: "General Knowledge",
+    numQuestions: 10,
+    timeLimit: 30,
+  });
+  const [readyStates, setReadyStates] = useState<{ [key: string]: boolean }>(
+    {},
+  );
+  const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
 
   useEffect(() => {
     socket = io(SOCKET_URL);
@@ -51,6 +69,15 @@ export default function LobbyPage({
       setLocked(true);
     });
 
+    socket.on("settings_updated", (newSettings) => {
+      setSettings(newSettings);
+      setCurrentCategoryIndex(categories.indexOf(newSettings.category));
+    });
+
+    socket.on("ready_states_updated", (states) => {
+      setReadyStates(states);
+    });
+
     socket.on("start_game", (session) => {
       try {
         sessionStorage.setItem(`session:${roomCode}`, JSON.stringify(session));
@@ -68,10 +95,25 @@ export default function LobbyPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const updateSettings = (newSettings: typeof settings) => {
+    if (!socket || !hostFlag) return;
+    setSettings(newSettings);
+    socket.emit("update_settings", { room: roomCode, settings: newSettings });
+  };
+
+  const toggleReady = () => {
+    if (!socket) return;
+    const currentReady = readyStates[socket.id] || false;
+    socket.emit("player_ready", { room: roomCode, ready: !currentReady });
+  };
+
   const startGame = () => {
     if (!socket) return;
     socket.emit("start_game", { room: roomCode });
   };
+
+  const allReady =
+    players.length > 0 && players.every((p) => readyStates[p.id]);
 
   return (
     <div className="min-h-screen p-6 flex flex-col items-center bg-marho-bg">
@@ -89,6 +131,85 @@ export default function LobbyPage({
         {/* Host view */}
         {hostFlag ? (
           <>
+            {/* Category Carousel */}
+            <div className="mb-6">
+              <h3 className="text-xl font-bold mb-2">Category</h3>
+              <div className="flex items-center justify-center space-x-4">
+                <button
+                  onClick={() => {
+                    const newIndex =
+                      (currentCategoryIndex - 1 + categories.length) %
+                      categories.length;
+                    setCurrentCategoryIndex(newIndex);
+                    updateSettings({
+                      ...settings,
+                      category: categories[newIndex],
+                    });
+                  }}
+                  className="p-2 border-4 border-black bg-white font-bold hover:bg-gray-100"
+                >
+                  ‹
+                </button>
+                <div className="p-4 border-4 border-black bg-marho-yellow font-bold text-center min-w-[200px]">
+                  {settings.category}
+                </div>
+                <button
+                  onClick={() => {
+                    const newIndex =
+                      (currentCategoryIndex + 1) % categories.length;
+                    setCurrentCategoryIndex(newIndex);
+                    updateSettings({
+                      ...settings,
+                      category: categories[newIndex],
+                    });
+                  }}
+                  className="p-2 border-4 border-black bg-white font-bold hover:bg-gray-100"
+                >
+                  ›
+                </button>
+              </div>
+            </div>
+
+            {/* Settings Sliders */}
+            <div className="mb-6 space-y-4">
+              <div>
+                <label className="block text-lg font-bold mb-2">
+                  Number of Questions: {settings.numQuestions}
+                </label>
+                <input
+                  type="range"
+                  min="5"
+                  max="20"
+                  value={settings.numQuestions}
+                  onChange={(e) =>
+                    updateSettings({
+                      ...settings,
+                      numQuestions: parseInt(e.target.value),
+                    })
+                  }
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <label className="block text-lg font-bold mb-2">
+                  Time Limit: {settings.timeLimit}s
+                </label>
+                <input
+                  type="range"
+                  min="10"
+                  max="60"
+                  value={settings.timeLimit}
+                  onChange={(e) =>
+                    updateSettings({
+                      ...settings,
+                      timeLimit: parseInt(e.target.value),
+                    })
+                  }
+                  className="w-full"
+                />
+              </div>
+            </div>
+
             <h2 className="text-2xl font-extrabold mb-4">Players</h2>
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
@@ -100,10 +221,14 @@ export default function LobbyPage({
                 players.map((p) => (
                   <div
                     key={p.id}
-                    className="p-4 border-4 border-black bg-marho-pink text-white font-bold flex items-center justify-center pop-in"
+                    className={`p-4 border-4 border-black font-bold flex items-center justify-center pop-in ${
+                      readyStates[p.id]
+                        ? "bg-marho-green text-white"
+                        : "bg-marho-pink text-white"
+                    }`}
                     style={{ boxShadow: "4px 4px 0px 0px #000" }}
                   >
-                    {p.name}
+                    {p.name} {readyStates[p.id] ? "✓" : ""}
                   </div>
                 ))
               )}
@@ -112,8 +237,12 @@ export default function LobbyPage({
             <div className="mt-auto">
               <button
                 onClick={startGame}
-                disabled={players.length === 0 || locked}
-                className={`w-full py-4 text-xl font-extrabold border-4 border-black shadow-brutal bg-marho-green ${players.length === 0 || locked ? "opacity-50 cursor-not-allowed" : "hover:brightness-110"}`}
+                disabled={players.length === 0 || !allReady || locked}
+                className={`w-full py-4 text-xl font-extrabold border-4 border-black shadow-brutal bg-marho-green ${
+                  players.length === 0 || !allReady || locked
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:brightness-110"
+                }`}
               >
                 START QUIZ
               </button>
