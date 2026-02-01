@@ -99,7 +99,7 @@ export default function ResultsPage() {
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-5xl font-extrabold mb-4">Winner's Circle</h1>
+          <h1 className="text-5xl font-extrabold mb-4">Winner&apos;s Circle</h1>
           <p className="text-xl text-gray-700">Room Code: {roomCode}</p>
         </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 
@@ -22,9 +22,9 @@ const SOCKET_URL =
 export default function LobbyPage({
   params,
 }: {
-  params: { roomCode: string };
+  params: Promise<{ roomCode: string }>;
 }) {
-  const { roomCode } = params;
+  const { roomCode } = use(params);
   const router = useRouter();
   const search = useSearchParams();
   const name = search?.get("name") || null;
@@ -102,8 +102,8 @@ export default function LobbyPage({
   };
 
   const toggleReady = () => {
-    if (!socket) return;
-    const currentReady = readyStates[socket.id] || false;
+    if (!socket || !socket.id) return;
+    const currentReady = readyStates[socket.id as string] || false;
     socket.emit("player_ready", { room: roomCode, ready: !currentReady });
   };
 

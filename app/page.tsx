@@ -34,6 +34,7 @@ export default function Page() {
         Marho
       </h1>
 
+
       <div className="grid md:grid-cols-2 gap-8 w-full max-w-4xl">
         <div className="bg-marho-yellow border-4 border-black shadow-brutal-lg p-8 flex flex-col items-center justify-center transform transition-transform hover:-translate-y-1 hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
           <h2 className="text-3xl font-bold mb-6 uppercase">Host a Game</h2>
@@ -46,6 +47,7 @@ export default function Page() {
           >
             Create Room
           </button>
+          
         </div>
 
         <div className="bg-marho-green border-4 border-black shadow-brutal-lg p-8 flex flex-col items-center justify-center transform transition-transform hover:-translate-y-1 hover:shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">

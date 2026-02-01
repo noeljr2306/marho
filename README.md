@@ -1,36 +1,108 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Marho (v1) — Multiplayer Trivia Game 🎮✨
 
-## Getting Started
+**Marho** is a lightweight, real-time multiplayer trivia game built with **Next.js** and **Socket.IO**. Players join rooms, ready up in a lobby, and compete through a series of trivia questions fetched from the OpenTDB API.
 
-First, run the development server:
+---
+
+## 🔧 Features
+
+- Real-time multiplayer lobby and game flow (join rooms, ready states, start game)
+- Server socket logic in `socketServer.js` using **socket.io**
+- Questions fetched from OpenTDB (multiple choice)
+- Session metadata persisted to `sessions.json` (local file)
+- App pages:
+  - `app/lobby/[roomCode]` — lobby & settings
+  - `app/game/[roomCode]` — live gameplay
+  - `app/results/[roomCode]` — final results and scoring
+- Service worker: `public/sw.js`
+
+---
+
+## 🛠️ Tech Stack
+
+- Next.js 16
+- React 19
+- Socket.IO
+- Tailwind CSS
+- TypeScript
+
+---
+
+## 🚀 Quickstart (local)
+
+Prerequisites:
+
+- Node.js (recommended v18+)
+- npm (or yarn / pnpm)
+
+1. Install dependencies
+
+```bash
+npm install
+```
+
+2. Start the Socket.IO server (default port: 4000)
+
+```bash
+node socketServer.js
+```
+
+> If Node errors about ESM imports, add `"type": "module"` to `package.json` or rename the server file to `socketServer.mjs`.
+
+3. Start the Next.js dev server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Open the app
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+To change the socket port, set `SOCKET_PORT` before starting the socket server, e.g.:
 
-## Learn More
+```bash
+set SOCKET_PORT=5000 && node socketServer.js
+```
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📦 NPM Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `npm run dev` — start Next.js in development mode
+- `npm run build` — build for production
+- `npm run start` — run production build
+- `npm run lint` — run ESLint
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🧭 Architecture & Notes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- The socket server manages `rooms`, `activeGames`, and `readyStates` and uses OpenTDB to fetch questions.
+- `sessions.json` is written to project root when games start.
+- The server performs cleanup of empty rooms and prevents duplicate joins.
+
+---
+
+## ⚠️ Troubleshooting
+
+- OpenTDB requests may fail or be rate-limited; if game start fails, check network or try again.
+- If sockets don't connect, verify the socket server is running and that the frontend is pointed at the correct port.
+
+---
+
+## ✅ Contributing
+
+Contributions welcome — open issues or PRs. Please add tests/notes when changing socket behavior or game logic.
+
+---
+
+## 📄 License
+
+No license file is included yet. Consider adding an MIT (or other) license if you plan to publish or share the code.
+
+---
+
+Built with ❤️ and trivia.
