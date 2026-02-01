@@ -110,6 +110,7 @@ export default function Page() {
               />
             </div>
             <button
+            onClick={handleJoin}
               type="submit"
               className="w-full cursor-pointer bg-marho-pink text-black border-4 border-black py-4 text-xl font-bold shadow-brutal hover:brightness-110 active:translate-y-1 active:shadow-none transition-all"
             >
